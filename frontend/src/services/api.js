@@ -19,7 +19,7 @@
 
 import { MOCK_VIDEOS } from '../mock/mockVideos';
 
-const BASE_URL = 'http://127.0.0.1:8000';
+const BASE_URL = 'https://youtube-recommendation-system.onrender.com';
 const USE_MOCK_DATA = false; // Toggle to false when ready to connect FastAPI
 
 /**
