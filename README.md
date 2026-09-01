@@ -1,8 +1,10 @@
 # YouTube Recommendation System 🎥
 
-A content-based YouTube recommendation system built using Python, Pandas, NumPy, and Scikit-learn.
+An ML-based YouTube-style recommendation system built using **Python, Pandas, NumPy, Scikit-learn, FastAPI, and React**.
 
-The system allows users to enter a search query such as `python tutorial` or `machine learning` and returns the Top 10 most relevant videos based on the similarity between the user's query and the video content.
+The project, called **MLTube**, uses a content-based recommendation approach to recommend videos based on the user's search query and video content.
+
+The dataset contains **5,000 YouTube videos**.
 
 ---
 
@@ -10,13 +12,22 @@ The system allows users to enter a search query such as `python tutorial` or `ma
 
 Recommendation systems are widely used by platforms such as YouTube, Netflix, Spotify, and Amazon to help users discover relevant content.
 
-In this project, I built a **content-based recommendation system** that recommends YouTube videos based on their textual information.
+In this project, I built a **content-based YouTube recommendation system** using machine learning.
 
-Instead of requiring the user to enter the exact title of an existing video, the system accepts a general search query.
+The system analyzes video information such as:
+
+- Title
+- Description
+- Tags
+- Category
+
+These features are combined into text and processed using **TF-IDF Vectorization**.
+
+Then **Cosine Similarity** is used to find videos that are most similar to the user's search query.
 
 ### Example
 
-User enters:
+User searches:
 
 ```text
-python tutorial
+python
