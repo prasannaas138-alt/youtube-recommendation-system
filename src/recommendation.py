@@ -1,22 +1,63 @@
+import re
+
 def get_recommendations(
     similarity_scores,
     df,
-    n=10,
+    query,
+    n=100,
     threshold=0.10
 ):
+    query = query.lower().strip()
+    scores = similarity_scores.copy()
 
-    similarity_indices = similarity_scores.argsort()[::-1]
+    # --------------------------------------------------
+    # 1. Direct phrase matching
+    # --------------------------------------------------
+    for index, row in df.iterrows():
 
-    top_indices = similarity_indices[:n]
+        title = str(row["title"]).lower()
+        tags = str(row["tags"]).lower()
+        category = str(row["category"]).lower()
+        description = str(row["description"]).lower()
 
-    if similarity_scores[top_indices[0]] < threshold:
+        direct_score = 0
+
+        # Exact phrase in title
+        if query in title:
+            direct_score += 0.40
+
+        # Exact phrase in tags
+        if query in tags:
+            direct_score += 0.30
+
+        # Exact phrase in category
+        if query in category:
+            direct_score += 0.20
+
+        # Exact phrase in description
+        if query in description:
+            direct_score += 0.10
+
+        scores[index] += direct_score
+
+    # --------------------------------------------------
+    # 2. Sort by final score
+    # --------------------------------------------------
+    ranked_indices = scores.argsort()[::-1]
+
+    top_indices = ranked_indices[:n]
+
+    # --------------------------------------------------
+    # 3. Threshold check
+    # --------------------------------------------------
+
+    if scores[top_indices[-1]] < threshold:
         return None
 
     recommendations = df.iloc[top_indices].copy()
 
-    recommendations["similarity_score"] = (
-        similarity_scores[top_indices]
-    )
+    recommendations["similarity_score"] = scores[top_indices]
+
 
     return recommendations[
         [

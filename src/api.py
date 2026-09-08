@@ -71,33 +71,36 @@ def recommend(request: SearchRequest):
 
 @app.post("/search")
 def search(request: SearchRequest):
+    query = request.query.strip()
 
-    query = request.query.lower()
+    # Convert the user's query into a TF-IDF vector
+    query_vector = tfidf.transform([query])
 
-    matching_videos = df[
-        df["combined_text"].str.contains(
-            query,
-            case=False,
-            na=False
-        )
-    ]
+    # Calculate similarity between query and all videos
+    similarity_scores = calculate_similarity(
+        query_vector,
+        tfidf_matrix
+    )
 
-    # Return all matching results (no limit) for client-side pagination
-    results = matching_videos
+    # Rank videos using TF-IDF + direct matching
+    results = get_recommendations(
+        similarity_scores,
+        df,
+        query=query,
+        n=100
+    )
+
+    if results is None:
+        return {
+            "query": request.query,
+            "count": 0,
+            "videos": []
+        }
 
     return {
-        "status": "success",
         "query": request.query,
         "count": len(results),
         "videos": results[
-            [
-                "video_id",
-                "title",
-                "category",
-                "channel"
-            ]
-        ].to_dict(
-            orient="records"
-        )
+            ["video_id", "title", "category", "channel"]
+        ].to_dict(orient="records")
     }
-    
