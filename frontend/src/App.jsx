@@ -47,6 +47,8 @@ const fetchSearchVideos = async (query, category = 'All') => {
   try {
     const data = await searchVideos(query, 0, 12);
 
+    console.log('Search response:', data);
+
     let videos = data.videos || [];
 
     if (category !== 'All') {
@@ -59,12 +61,17 @@ const fetchSearchVideos = async (query, category = 'All') => {
     setDisplayedVideos(videos);
     setCurrentBatch(0);
     setBatchSize(12);
-    setCanLoadMore(data.hasMore ?? false);
+
+    // Use backend pagination information
+    setCanLoadMore(data.hasMore === true);
+
+    setCount(data.count || 0);
   } catch (error) {
     console.error('Search error:', error);
     setAllResults([]);
     setDisplayedVideos([]);
     setCanLoadMore(false);
+    setCount(0);
   } finally {
     setLoading(false);
   }
