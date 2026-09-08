@@ -28,7 +28,8 @@ tfidf, tfidf_matrix, df = load_model()
 
 class SearchRequest(BaseModel):
     query: str
-
+    offset: int = 0
+    limit: int = 12
 
 @app.get("/")
 def home():
@@ -73,34 +74,44 @@ def recommend(request: SearchRequest):
 def search(request: SearchRequest):
     query = request.query.strip()
 
-    # Convert the user's query into a TF-IDF vector
+    # Convert query into TF-IDF vector
     query_vector = tfidf.transform([query])
 
-    # Calculate similarity between query and all videos
+    # Calculate similarity against all 5,000 videos
     similarity_scores = calculate_similarity(
         query_vector,
         tfidf_matrix
     )
 
-    # Rank videos using TF-IDF + direct matching
+    # Rank the full dataset using our improved ranking
     results = get_recommendations(
         similarity_scores,
         df,
         query=query,
-        n=100
+        n=len(df)
     )
 
     if results is None:
         return {
             "query": request.query,
             "count": 0,
-            "videos": []
+            "videos": [],
+            "has_more": False
         }
+
+    # Get only the requested 12 videos
+    start = request.offset
+    end = start + request.limit
+
+    paginated_results = results.iloc[start:end]
 
     return {
         "query": request.query,
         "count": len(results),
-        "videos": results[
+        "videos": paginated_results[
             ["video_id", "title", "category", "channel"]
-        ].to_dict(orient="records")
+        ].to_dict(orient="records"),
+        "offset": request.offset,
+        "limit": request.limit,
+        "has_more": end < len(results)
     }

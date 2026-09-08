@@ -59,52 +59,72 @@ export const checkHealth = async () => {
  * Request payload: { query: "python" }
  * Expected response: { status: "success", query: "python", count: 20, videos: [...] }
  */
-export const searchVideos = async (query = '') => {
+export const searchVideos = async (
+  query = '',
+  offset = 0,
+  limit = 12
+) => {
   if (USE_MOCK_DATA) {
-    // Simulate short network delay for smooth UI feedback
     await new Promise((resolve) => setTimeout(resolve, 200));
 
-    if (!query || query.trim() === '') {
-      return { status: 'success', query: '', count: MOCK_VIDEOS.length, videos: MOCK_VIDEOS };
-    }
-
     const lowerQuery = query.toLowerCase().trim();
-    const filtered = MOCK_VIDEOS.filter(
-      (v) =>
-        v.title.toLowerCase().includes(lowerQuery) ||
-        v.category.toLowerCase().includes(lowerQuery) ||
-        v.channel.toLowerCase().includes(lowerQuery)
-    );
+
+    const filtered = !lowerQuery
+      ? MOCK_VIDEOS
+      : MOCK_VIDEOS.filter(
+          (v) =>
+            v.title.toLowerCase().includes(lowerQuery) ||
+            v.category.toLowerCase().includes(lowerQuery) ||
+            v.channel.toLowerCase().includes(lowerQuery)
+        );
+
+    const videos = filtered.slice(offset, offset + limit);
 
     return {
       status: 'success',
       query,
       count: filtered.length,
-      videos: filtered
+      videos,
+      hasMore: offset + limit < filtered.length
     };
   }
 
   try {
     const response = await fetch(`${BASE_URL}/search`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query })
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        query,
+        offset,
+        limit
+      })
     });
 
-    if (!response.ok) throw new Error(`HTTP error ${response.status}`);
+    if (!response.ok) {
+      throw new Error(`HTTP error ${response.status}`);
+    }
+
     const data = await response.json();
 
     return {
       ...data,
-      videos: (data.videos || []).map(formatBackendVideo)
+      videos: (data.videos || []).map(formatBackendVideo),
+      hasMore: data.has_more
     };
   } catch (error) {
     console.error('FastAPI Search Error:', error);
-    // Graceful fallback to mock search if backend call fails
-    return searchVideos(query);
+
+    return {
+      status: 'error',
+      query,
+      count: 0,
+      videos: [],
+      hasMore: false
+    };
   }
 };
-
 /**
  * ML Recommendation engine call for POST /recommend
  * Request payload: { query: "machine learning" }

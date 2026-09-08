@@ -41,31 +41,34 @@ function App() {
    * Perform Video Search (calls API service searchVideos)
    * Sets initial page with 12 results
    */
-  const fetchSearchVideos = async (query = '', category = 'All') => {
-    setLoading(true);
-    setLoadingMore(false);
-    setActiveMode('search');
-    setCurrentBatch(0);
-    setBatchSize(12);
-    setMaxBatches(4); // Max 4 batches for search = 48 videos
+const fetchSearchVideos = async (query, category = 'All') => {
+  setLoading(true);
 
-    const result = await searchVideos(query);
-    let list = result.videos || [];
+  try {
+    const data = await searchVideos(query, 0, 12);
 
-    // Apply client-side category filter if a specific category is chosen
-    if (category && category !== 'All') {
-      list = list.filter((v) => v.category.toLowerCase() === category.toLowerCase());
+    let videos = data.videos || [];
+
+    if (category !== 'All') {
+      videos = videos.filter(
+        (video) => video.category === category
+      );
     }
 
-    // Store all results and display first batch
-    setAllResults(list);
-    const firstBatch = list.slice(0, 12);
-    setDisplayedVideos(firstBatch);
-    setCount(list.length);
-    setCanLoadMore(list.length > 12);
+    setAllResults(videos);
+    setDisplayedVideos(videos);
+    setCurrentBatch(0);
+    setBatchSize(12);
+    setCanLoadMore(data.hasMore ?? false);
+  } catch (error) {
+    console.error('Search error:', error);
+    setAllResults([]);
+    setDisplayedVideos([]);
+    setCanLoadMore(false);
+  } finally {
     setLoading(false);
-  };
-
+  }
+};
   /**
    * Get ML Recommendations (calls API service getRecommendations)
    * Sets initial page with 20 results
@@ -94,45 +97,60 @@ function App() {
   /**
    * Load more videos on infinite scroll
    */
-  const handleLoadMore = useCallback(() => {
-    if (loadingMore || !canLoadMore) {
+const handleLoadMore = useCallback(async () => {
+  if (loadingMore || !canLoadMore) {
+    return;
+  }
+
+  setLoadingMore(true);
+
+  try {
+    const nextOffset = displayedVideos.length;
+
+    const data = await searchVideos(
+      searchQuery,
+      nextOffset,
+      12
+    );
+
+    let newVideos = data.videos || [];
+
+    if (activeCategory !== 'All') {
+      newVideos = newVideos.filter(
+        (video) => video.category === activeCategory
+      );
+    }
+
+    if (newVideos.length === 0) {
+      setCanLoadMore(false);
       return;
     }
 
-    setLoadingMore(true);
-    
-    // Simulate network delay
-    setTimeout(() => {
-      const nextBatch = currentBatch + 1;
-      
-      // For search mode, enforce 4-batch limit
-      if (activeMode === 'search' && nextBatch >= maxBatches) {
-        setCanLoadMore(false);
-        setLoadingMore(false);
-        return;
-      }
+    setDisplayedVideos((prev) => [
+      ...prev,
+      ...newVideos
+    ]);
 
-      const startIdx = nextBatch * batchSize;
-      const endIdx = startIdx + batchSize;
-      
-      const newVideos = allResults.slice(startIdx, endIdx);
-      
-      if (newVideos.length === 0) {
-        setCanLoadMore(false);
-        setLoadingMore(false);
-        return;
-      }
+    setAllResults((prev) => [
+      ...prev,
+      ...newVideos
+    ]);
 
-      setDisplayedVideos((prev) => [...prev, ...newVideos]);
-      setCurrentBatch(nextBatch);
-      
-      // Determine if we can load more
-      const hasMoreData = endIdx < allResults.length;
-      const withinBatchLimit = activeMode === 'recommend' || (nextBatch + 1) < maxBatches;
-      setCanLoadMore(hasMoreData && withinBatchLimit);
-      setLoadingMore(false);
-    }, 300);
-  }, [currentBatch, batchSize, maxBatches, loadingMore, canLoadMore, allResults, activeMode]);
+    setCurrentBatch((prev) => prev + 1);
+
+    setCanLoadMore(data.hasMore ?? false);
+  } catch (error) {
+    console.error('Load more error:', error);
+  } finally {
+    setLoadingMore(false);
+  }
+}, [
+  loadingMore,
+  canLoadMore,
+  displayedVideos.length,
+  searchQuery,
+  activeCategory
+]);
 /**
  * Load search history from browser localStorage
  */
@@ -189,16 +207,22 @@ const handleClearAllHistory = () => {
  * Handler when user submits search query from Header
  */
 const handleSearch = (query) => {
-    // Save to history only if query is not empty
-    if (query && query.trim()) {
-        saveSearchHistory(query);
-    }
+  // Save to history only if query is not empty
+  if (query && query.trim()) {
+    saveSearchHistory(query);
+  }
 
-    setSearchQuery(query);
-    setActiveCategory('All');
-    fetchSearchVideos(query, 'All');
+  setSearchQuery(query);
+  setActiveCategory('All');
+
+  // Reset previous results before starting a new search
+  setDisplayedVideos([]);
+  setAllResults([]);
+  setCurrentBatch(0);
+  setCanLoadMore(true);
+
+  fetchSearchVideos(query, 'All');
 };
-
 
   /**
    * Handler when user clicks "AI Recommend" button
