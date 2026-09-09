@@ -37,8 +37,12 @@ function App() {
     localStorage.getItem('searchHistory') || '[]'
   );
 
-  fetchHomeVideos(history, 0);    
-  }, []);
+  const frequency = JSON.parse(
+    localStorage.getItem('searchFrequency') || '{}'
+  );
+
+  fetchHomeVideos(history, frequency, 0);
+}, []);
 
   /**
    * Perform Video Search (calls API service searchVideos)
@@ -80,12 +84,16 @@ const fetchSearchVideos = async (query, category = 'All') => {
   }
 };
 
-const fetchHomeVideos = async (history = [], offset = 0) => {
+const fetchHomeVideos = async (
+  history = [],
+  frequency = {},
+  offset = 0
+) => {
   setLoading(offset === 0);
   setLoadingMore(offset > 0);
 
   try {
-    const data = await getHomeVideos(history, offset, 12);
+    const data = await getHomeVideos(history, frequency, offset, 12);
 
     const videos = data.videos || [];
 
@@ -216,25 +224,53 @@ const loadSearchHistory = () => {
  * Save search query with deduplication - moves existing search to top instead of duplicating
  */
 const saveSearchHistory = (query) => {
-    if (!query || query.trim() === '') {
-        return;
-    }
+  if (!query || query.trim() === '') {
+    return;
+  }
 
-    const trimmedQuery = query.trim();
-    const existingHistory = JSON.parse(localStorage.getItem('searchHistory')) || [];
+  const trimmedQuery = query.trim();
 
-    // Remove if already exists (will add it to the top)
-    const filteredHistory = existingHistory.filter(
-        (item) => item.toLowerCase() !== trimmedQuery.toLowerCase()
-    );
+  // Existing recent-search history
+  const existingHistory =
+    JSON.parse(localStorage.getItem('searchHistory')) || [];
 
-    // Add to the beginning (newest first)
-    const updatedHistory = [trimmedQuery, ...filteredHistory];
+  const filteredHistory = existingHistory.filter(
+    (item) =>
+      item.toLowerCase() !== trimmedQuery.toLowerCase()
+  );
 
-    localStorage.setItem('searchHistory', JSON.stringify(updatedHistory));
-    setSearchHistory(updatedHistory);
+  const updatedHistory = [
+    trimmedQuery,
+    ...filteredHistory
+  ];
+
+  localStorage.setItem(
+    'searchHistory',
+    JSON.stringify(updatedHistory)
+  );
+
+  setSearchHistory(updatedHistory);
+
+  // Search frequency tracking
+  const searchFrequency =
+    JSON.parse(localStorage.getItem('searchFrequency')) || {};
+
+  const existingKey = Object.keys(searchFrequency).find(
+    (key) =>
+      key.toLowerCase() === trimmedQuery.toLowerCase()
+  );
+
+  if (existingKey) {
+    searchFrequency[existingKey] += 1;
+  } else {
+    searchFrequency[trimmedQuery] = 1;
+  }
+
+  localStorage.setItem(
+    'searchFrequency',
+    JSON.stringify(searchFrequency)
+  );
 };
-
 /**
  * Delete a specific search from history
  */
@@ -308,12 +344,15 @@ const handleHomeClick = () => {
     localStorage.getItem('searchHistory') || '[]'
   );
 
+  const frequency = JSON.parse(
+    localStorage.getItem('searchFrequency') || '{}'
+  );
   setDisplayedVideos([]);
   setAllResults([]);
   setCurrentBatch(0);
   setCanLoadMore(true);
 
-  fetchHomeVideos(history, 0);
+  fetchHomeVideos(history, frequency , 0);
 };
   /**
    * Toggle sidebar navigation drawer

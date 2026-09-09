@@ -128,6 +128,7 @@ export const searchVideos = async (
 
 export const getHomeVideos = async (
   searchHistory = [],
+  searchFrequency = {},
   offset = 0,
   limit = 12
 ) => {
@@ -148,6 +149,7 @@ export const getHomeVideos = async (
       },
       body: JSON.stringify({
         search_history: searchHistory,
+        search_frequency: searchFrequency,
         offset,
         limit
       })
