@@ -125,6 +125,58 @@ export const searchVideos = async (
     };
   }
 };
+
+export const getHomeVideos = async (
+  searchHistory = [],
+  offset = 0,
+  limit = 12
+) => {
+  if (USE_MOCK_DATA) {
+    return {
+      status: 'success',
+      count: MOCK_VIDEOS.length,
+      videos: MOCK_VIDEOS.slice(offset, offset + limit),
+      hasMore: offset + limit < MOCK_VIDEOS.length
+    };
+  }
+
+  try {
+    const response = await fetch(`${BASE_URL}/home`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        search_history: searchHistory,
+        offset,
+        limit
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    return {
+      ...data,
+      videos: (data.videos || []).map(formatBackendVideo),
+      hasMore: data.has_more
+    };
+  } catch (error) {
+    console.error('Home Recommendation Error:', error);
+
+    return {
+      status: 'error',
+      count: 0,
+      videos: [],
+      hasMore: false
+    };
+  }
+};
+
+
 /**
  * ML Recommendation engine call for POST /recommend
  * Request payload: { query: "machine learning" }

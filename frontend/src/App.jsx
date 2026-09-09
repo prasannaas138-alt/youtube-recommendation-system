@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { HomePage } from './pages/HomePage';
-import { searchVideos, getRecommendations, checkHealth } from './services/api';
+import { searchVideos, getHomeVideos, getRecommendations, checkHealth } from './services/api';
 
 /**
  * Main MLTube App Component
@@ -31,10 +31,13 @@ function App() {
     
     // Initialize search history as empty to start fresh for testing
     // Comment this line out after testing if you want to preserve history
-    localStorage.setItem('searchHistory', JSON.stringify([]));
-    
-    loadSearchHistory();
-    fetchSearchVideos('', 'All');
+  loadSearchHistory();
+
+  const history = JSON.parse(
+    localStorage.getItem('searchHistory') || '[]'
+  );
+
+  fetchHomeVideos(history, 0);    
   }, []);
 
   /**
@@ -76,6 +79,43 @@ const fetchSearchVideos = async (query, category = 'All') => {
     setLoading(false);
   }
 };
+
+const fetchHomeVideos = async (history = [], offset = 0) => {
+  setLoading(offset === 0);
+  setLoadingMore(offset > 0);
+
+  try {
+    const data = await getHomeVideos(history, offset, 12);
+
+    const videos = data.videos || [];
+
+    if (offset === 0) {
+      setAllResults(videos);
+      setDisplayedVideos(videos);
+      setCurrentBatch(0);
+    } else {
+      setAllResults((prev) => [...prev, ...videos]);
+      setDisplayedVideos((prev) => [...prev, ...videos]);
+      setCurrentBatch((prev) => prev + 1);
+    }
+
+    setBatchSize(12);
+    setCanLoadMore(data.hasMore ?? false);
+    setCount(data.count || 0);
+  } catch (error) {
+    console.error('Home recommendation error:', error);
+
+    if (offset === 0) {
+      setAllResults([]);
+      setDisplayedVideos([]);
+    }
+
+    setCanLoadMore(false);
+  } finally {
+    setLoading(false);
+    setLoadingMore(false);
+  }
+};
   /**
    * Get ML Recommendations (calls API service getRecommendations)
    * Sets initial page with 20 results
@@ -109,11 +149,16 @@ const handleLoadMore = useCallback(async () => {
     return;
   }
 
+  const nextOffset = displayedVideos.length;
+
+  if (searchQuery.trim() === '') {
+    await fetchHomeVideos(searchHistory, nextOffset);
+    return;
+  }
+
   setLoadingMore(true);
 
   try {
-    const nextOffset = displayedVideos.length;
-
     const data = await searchVideos(
       searchQuery,
       nextOffset,
@@ -144,8 +189,8 @@ const handleLoadMore = useCallback(async () => {
     ]);
 
     setCurrentBatch((prev) => prev + 1);
-
     setCanLoadMore(data.hasMore ?? false);
+
   } catch (error) {
     console.error('Load more error:', error);
   } finally {
@@ -156,6 +201,7 @@ const handleLoadMore = useCallback(async () => {
   canLoadMore,
   displayedVideos.length,
   searchQuery,
+  searchHistory,
   activeCategory
 ]);
 /**
@@ -253,12 +299,22 @@ const handleSearch = (query) => {
   /**
    * Reset to Home view
    */
-  const handleHomeClick = () => {
-    setSearchQuery('');
-    setActiveCategory('All');
-    fetchSearchVideos('', 'All');
-  };
+const handleHomeClick = () => {
+  setSearchQuery('');
+  setActiveCategory('All');
+  setActiveMode('search');
 
+  const history = JSON.parse(
+    localStorage.getItem('searchHistory') || '[]'
+  );
+
+  setDisplayedVideos([]);
+  setAllResults([]);
+  setCurrentBatch(0);
+  setCanLoadMore(true);
+
+  fetchHomeVideos(history, 0);
+};
   /**
    * Toggle sidebar navigation drawer
    */

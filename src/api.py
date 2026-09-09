@@ -31,6 +31,11 @@ class SearchRequest(BaseModel):
     offset: int = 0
     limit: int = 12
 
+class HomeRequest(BaseModel):
+    search_history: list[str] = []
+    offset: int = 0
+    limit: int = 12
+
 @app.get("/")
 def home():
     return {
@@ -114,4 +119,76 @@ def search(request: SearchRequest):
         "offset": request.offset,
         "limit": request.limit,
         "has_more": end < len(results)
+    }
+
+@app.post("/home")
+def home(request: HomeRequest):
+    history = request.search_history
+
+    # If there is no search history, return the normal video pool
+    if not history:
+        start = request.offset
+        end = start + request.limit
+
+        videos = df.iloc[start:end][
+            ["video_id", "title", "category", "channel"]
+        ]
+
+        return {
+            "count": len(df),
+            "videos": videos.to_dict(orient="records"),
+            "offset": request.offset,
+            "limit": request.limit,
+            "has_more": end < len(df)
+        }
+
+    # Give more importance to recent searches
+    weighted_queries = []
+
+    for index, query in enumerate(history):
+        weight = len(history) - index
+        weighted_queries.extend([query] * weight)
+
+    combined_query = " ".join(weighted_queries)
+
+    # Create query vector
+    query_vector = tfidf.transform([combined_query])
+
+    # Calculate similarity with all 5,000 videos
+    similarity_scores = calculate_similarity(
+        query_vector,
+        tfidf_matrix
+    )
+
+    # Use our existing hybrid ranking system
+    recommendations = get_recommendations(
+        similarity_scores,
+        df,
+        query=combined_query,
+        n=len(df)
+    )
+
+    if recommendations is None:
+        return {
+            "count": 0,
+            "videos": [],
+            "offset": request.offset,
+            "limit": request.limit,
+            "has_more": False
+        }
+
+    # Pagination
+    start = request.offset
+    end = start + request.limit
+
+    paginated_results = recommendations.iloc[start:end]
+
+    return {
+        "count": len(recommendations),
+        "videos": paginated_results[
+            ["video_id", "title", "category", "channel"]
+        ].to_dict(orient="records"),
+        "offset": request.offset,
+        "limit": request.limit,
+        "has_more": end < len(recommendations)
     }
