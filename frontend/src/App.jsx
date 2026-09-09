@@ -46,7 +46,7 @@ function App() {
     localStorage.getItem('searchFrequency') || '{}'
   );
 
-  fetchHomeVideos(history, frequency, 0, newSeed);}, []);
+  fetchHomeVideos(history, frequency, 0, homeSeed);}, []);
 
   /**
    * Perform Video Search (calls API service searchVideos)
