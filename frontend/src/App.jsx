@@ -370,13 +370,14 @@ const handleHomeClick = () => {
   const frequency = JSON.parse(
     localStorage.getItem('searchFrequency') || '{}'
   );
+
   setDisplayedVideos([]);
   setAllResults([]);
   setCurrentBatch(0);
   setCanLoadMore(true);
 
-  fetchHomeVideos(history, frequency , 0);
-};
+  fetchHomeVideos(history, frequency, 0, newSeed);
+};  
   /**
    * Toggle sidebar navigation drawer
    */
