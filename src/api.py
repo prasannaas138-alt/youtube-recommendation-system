@@ -38,6 +38,7 @@ class HomeRequest(BaseModel):
     search_frequency: dict[str, int] = {}
     offset: int = 0
     limit: int = 12
+    seed: int = 0
 
 @app.get("/")
 def home():
@@ -234,18 +235,9 @@ def home(request: HomeRequest):
         least_pool = df.iloc[0:0]
 
     # Shuffle each personalized pool
-    most_pool = most_pool.sample(
-        frac=1
-    )
-
-    second_pool = second_pool.sample(
-        frac=1
-    )
-
-    least_pool = least_pool.sample(
-        frac=1
-    )
-
+    most_pool = most_pool.sample(frac=1, random_state=request.seed)
+    second_pool = second_pool.sample(frac=1, random_state=request.seed + 1)
+    least_pool = least_pool.sample(frac=1, random_state=request.seed + 2)
     # Discovery pool
     discovery_pool = df[
         ~df.index.isin(
@@ -253,8 +245,7 @@ def home(request: HomeRequest):
             .union(second_pool.index)
             .union(least_pool.index)
         )
-    ].sample(frac=1)
-
+    ].sample(frac=1, random_state=request.seed + 3)
     # Build a large recommendation pool.
     #
     # Every batch tries to follow:
@@ -320,8 +311,9 @@ def home(request: HomeRequest):
         # Shuffle the batch so the user doesn't see
         # 4 + 3 + 1 + 4 in a fixed order
         batch_df = batch_df.sample(
-            frac=1
-        )
+        frac=1,
+        random_state=request.seed + len(recommendations_list)
+    )
 
         recommendations_list.append(batch_df)
 

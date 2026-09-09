@@ -130,7 +130,9 @@ export const getHomeVideos = async (
   searchHistory = [],
   searchFrequency = {},
   offset = 0,
-  limit = 12
+  limit = 12,
+  seed = 0
+
 ) => {
   if (USE_MOCK_DATA) {
     return {
@@ -151,7 +153,8 @@ export const getHomeVideos = async (
         search_history: searchHistory,
         search_frequency: searchFrequency,
         offset,
-        limit
+        limit,
+        seed
       })
     });
 

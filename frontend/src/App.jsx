@@ -21,7 +21,12 @@ function App() {
   const [currentBatch, setCurrentBatch] = useState(0);     // Current batch for search/home
   const [maxBatches, setMaxBatches] = useState(Infinity);  // Max batches (4 for search, unlimited for home)
   const [batchSize, setBatchSize] = useState(20);          // 12 for search, 20 for home
-  const [canLoadMore, setCanLoadMore] = useState(true);    // Can load more results
+  const [canLoadMore, setCanLoadMore] = useState(true);
+  
+  const [homeSeed, setHomeSeed] = useState(
+  () => Math.floor(Math.random() * 1000000)
+  );
+  // Can load more results
 
   // Initial load & health check
   useEffect(() => {
@@ -41,8 +46,7 @@ function App() {
     localStorage.getItem('searchFrequency') || '{}'
   );
 
-  fetchHomeVideos(history, frequency, 0);
-}, []);
+  fetchHomeVideos(history, frequency, 0, newSeed);}, []);
 
   /**
    * Perform Video Search (calls API service searchVideos)
@@ -87,13 +91,21 @@ const fetchSearchVideos = async (query, category = 'All') => {
 const fetchHomeVideos = async (
   history = [],
   frequency = {},
-  offset = 0
+  offset = 0,
+  seed = homeSeed
+
 ) => {
   setLoading(offset === 0);
   setLoadingMore(offset > 0);
 
   try {
-    const data = await getHomeVideos(history, frequency, offset, 12);
+    const data = await getHomeVideos(
+    history,
+    frequency,
+    offset,
+    12,
+    seed
+  );
 
     const videos = data.videos || [];
 
@@ -160,10 +172,18 @@ const handleLoadMore = useCallback(async () => {
   const nextOffset = displayedVideos.length;
 
   if (searchQuery.trim() === '') {
-    await fetchHomeVideos(searchHistory, nextOffset);
+    const frequency = JSON.parse(
+      localStorage.getItem('searchFrequency') || '{}'
+    );
+
+    await fetchHomeVideos(
+      searchHistory,
+      frequency,
+      nextOffset
+    );
+
     return;
   }
-
   setLoadingMore(true);
 
   try {
@@ -336,6 +356,9 @@ const handleSearch = (query) => {
    * Reset to Home view
    */
 const handleHomeClick = () => {
+  const newSeed = Math.floor(Math.random() * 1000000);
+  setHomeSeed(newSeed);
+
   setSearchQuery('');
   setActiveCategory('All');
   setActiveMode('search');
