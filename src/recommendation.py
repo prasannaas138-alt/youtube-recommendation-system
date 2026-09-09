@@ -51,7 +51,7 @@ def get_recommendations(
     # 3. Threshold check
     # --------------------------------------------------
 
-    if scores[top_indices[-1]] < threshold:
+    if scores[top_indices[0]] < threshold:
         return None
 
     recommendations = df.iloc[top_indices].copy()
